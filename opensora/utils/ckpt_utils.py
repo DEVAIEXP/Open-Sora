@@ -7,8 +7,8 @@ from typing import Tuple
 import torch
 import torch.distributed as dist
 import torch.nn as nn
-from colossalai.booster import Booster
-from colossalai.checkpoint_io import GeneralCheckpointIO
+#from colossalai.booster import Booster
+#from colossalai.checkpoint_io import GeneralCheckpointIO
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
 from torchvision.datasets.utils import download_url
@@ -217,76 +217,76 @@ def save_json(data, file_path: str):
 # save and load for training
 
 
-def save(
-    booster: Booster,
-    save_dir: str,
-    model: nn.Module = None,
-    ema: nn.Module = None,
-    optimizer: Optimizer = None,
-    lr_scheduler: _LRScheduler = None,
-    sampler=None,
-    epoch: int = None,
-    step: int = None,
-    global_step: int = None,
-    batch_size: int = None,
-):
-    save_dir = os.path.join(save_dir, f"epoch{epoch}-global_step{global_step}")
-    os.makedirs(os.path.join(save_dir, "model"), exist_ok=True)
+# def save(
+#     booster: Booster,
+#     save_dir: str,
+#     model: nn.Module = None,
+#     ema: nn.Module = None,
+#     optimizer: Optimizer = None,
+#     lr_scheduler: _LRScheduler = None,
+#     sampler=None,
+#     epoch: int = None,
+#     step: int = None,
+#     global_step: int = None,
+#     batch_size: int = None,
+# ):
+#     save_dir = os.path.join(save_dir, f"epoch{epoch}-global_step{global_step}")
+#     os.makedirs(os.path.join(save_dir, "model"), exist_ok=True)
 
-    if model is not None:
-        booster.save_model(model, os.path.join(save_dir, "model"), shard=True)
-    if optimizer is not None:
-        booster.save_optimizer(optimizer, os.path.join(save_dir, "optimizer"), shard=True, size_per_shard=4096)
-    if lr_scheduler is not None:
-        booster.save_lr_scheduler(lr_scheduler, os.path.join(save_dir, "lr_scheduler"))
-    if dist.get_rank() == 0:
-        running_states = {
-            "epoch": epoch,
-            "step": step,
-            "global_step": global_step,
-            "batch_size": batch_size,
-        }
-        save_json(running_states, os.path.join(save_dir, "running_states.json"))
+#     if model is not None:
+#         booster.save_model(model, os.path.join(save_dir, "model"), shard=True)
+#     if optimizer is not None:
+#         booster.save_optimizer(optimizer, os.path.join(save_dir, "optimizer"), shard=True, size_per_shard=4096)
+#     if lr_scheduler is not None:
+#         booster.save_lr_scheduler(lr_scheduler, os.path.join(save_dir, "lr_scheduler"))
+#     if dist.get_rank() == 0:
+#         running_states = {
+#             "epoch": epoch,
+#             "step": step,
+#             "global_step": global_step,
+#             "batch_size": batch_size,
+#         }
+#         save_json(running_states, os.path.join(save_dir, "running_states.json"))
 
-        if ema is not None:
-            torch.save(ema.state_dict(), os.path.join(save_dir, "ema.pt"))
+#         if ema is not None:
+#             torch.save(ema.state_dict(), os.path.join(save_dir, "ema.pt"))
 
-        if sampler is not None:
-            # only for VariableVideoBatchSampler
-            torch.save(sampler.state_dict(step), os.path.join(save_dir, "sampler"))
-    dist.barrier()
-    return save_dir
+#         if sampler is not None:
+#             # only for VariableVideoBatchSampler
+#             torch.save(sampler.state_dict(step), os.path.join(save_dir, "sampler"))
+#     dist.barrier()
+#     return save_dir
 
 
-def load(
-    booster: Booster,
-    load_dir: str,
-    model: nn.Module = None,
-    ema: nn.Module = None,
-    optimizer: Optimizer = None,
-    lr_scheduler: _LRScheduler = None,
-    sampler=None,
-) -> Tuple[int, int, int]:
-    assert os.path.exists(load_dir), f"Checkpoint directory {load_dir} does not exist"
-    assert os.path.exists(os.path.join(load_dir, "running_states.json")), "running_states.json does not exist"
-    running_states = load_json(os.path.join(load_dir, "running_states.json"))
-    if model is not None:
-        booster.load_model(model, os.path.join(load_dir, "model"))
-    if ema is not None:
-        # ema is not boosted, so we don't use booster.load_model
-        ema.load_state_dict(
-            torch.load(os.path.join(load_dir, "ema.pt"), map_location=torch.device("cpu")),
-            strict=False,
-        )
-    if optimizer is not None:
-        booster.load_optimizer(optimizer, os.path.join(load_dir, "optimizer"))
-    if lr_scheduler is not None:
-        booster.load_lr_scheduler(lr_scheduler, os.path.join(load_dir, "lr_scheduler"))
-    if sampler is not None:
-        sampler.load_state_dict(torch.load(os.path.join(load_dir, "sampler")))
-    dist.barrier()
+# def load(
+#     booster: Booster,
+#     load_dir: str,
+#     model: nn.Module = None,
+#     ema: nn.Module = None,
+#     optimizer: Optimizer = None,
+#     lr_scheduler: _LRScheduler = None,
+#     sampler=None,
+# ) -> Tuple[int, int, int]:
+#     assert os.path.exists(load_dir), f"Checkpoint directory {load_dir} does not exist"
+#     assert os.path.exists(os.path.join(load_dir, "running_states.json")), "running_states.json does not exist"
+#     running_states = load_json(os.path.join(load_dir, "running_states.json"))
+#     if model is not None:
+#         booster.load_model(model, os.path.join(load_dir, "model"))
+#     if ema is not None:
+#         # ema is not boosted, so we don't use booster.load_model
+#         ema.load_state_dict(
+#             torch.load(os.path.join(load_dir, "ema.pt"), map_location=torch.device("cpu")),
+#             strict=False,
+#         )
+#     if optimizer is not None:
+#         booster.load_optimizer(optimizer, os.path.join(load_dir, "optimizer"))
+#     if lr_scheduler is not None:
+#         booster.load_lr_scheduler(lr_scheduler, os.path.join(load_dir, "lr_scheduler"))
+#     if sampler is not None:
+#         sampler.load_state_dict(torch.load(os.path.join(load_dir, "sampler")))
+#     dist.barrier()
 
-    return (
-        running_states["epoch"],
-        running_states["step"],
-    )
+#     return (
+#         running_states["epoch"],
+#         running_states["step"],
+#     )

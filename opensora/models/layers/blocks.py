@@ -38,12 +38,14 @@ class LlamaRMSNorm(nn.Module):
         self.weight = nn.Parameter(torch.ones(hidden_size))
         self.variance_epsilon = eps
 
+    @torch.cuda.amp.autocast(enabled=True)
     def forward(self, hidden_states):
         input_dtype = hidden_states.dtype
         hidden_states = hidden_states.to(torch.float32)
         variance = hidden_states.pow(2).mean(-1, keepdim=True)
         hidden_states = hidden_states * torch.rsqrt(variance + self.variance_epsilon)
-        return self.weight * hidden_states.to(input_dtype)
+        hidden_states = (self.weight.to(torch.float32) * hidden_states).to(input_dtype)
+        return hidden_states
 
 
 def get_layernorm(hidden_size: torch.Tensor, eps: float, affine: bool, use_kernel: bool):
@@ -164,6 +166,7 @@ class Attention(nn.Module):
             self.rope = True
             self.rotary_emb = rope
 
+    @torch.cuda.amp.autocast(enabled=True)
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         B, N, C = x.shape
         # flash attn is not memory efficient for small sequences, this is empirical
@@ -754,7 +757,7 @@ class PositionEmbedding2D(nn.Module):
         self.register_buffer("inv_freq", inv_freq, persistent=False)
 
     def _get_sin_cos_emb(self, t: torch.Tensor):
-        out = torch.einsum("i,d->id", t, self.inv_freq)
+        out = torch.einsum("i,d->id", t, self.inv_freq.to(t.dtype))
         emb_cos = torch.cos(out)
         emb_sin = torch.sin(out)
         return torch.cat((emb_sin, emb_cos), dim=-1)

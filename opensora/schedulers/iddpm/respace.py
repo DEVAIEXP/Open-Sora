@@ -12,7 +12,7 @@
 
 
 import torch
-from colossalai.utils import get_current_device
+#from colossalai.utils import get_current_device
 
 from .gaussian_diffusion import GaussianDiffusion
 

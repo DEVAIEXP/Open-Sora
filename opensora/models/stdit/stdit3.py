@@ -85,7 +85,7 @@ class STDiT3Block(nn.Module):
         x = torch.where(x_mask[:, :, None, None], x, masked_x)
         x = rearrange(x, "B T S C -> B (T S) C")
         return x
-
+    @torch.cuda.amp.autocast(enabled=True)
     def forward(
         self,
         x,
@@ -100,11 +100,11 @@ class STDiT3Block(nn.Module):
         # prepare modulate parameters
         B, N, C = x.shape
         shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = (
-            self.scale_shift_table[None] + t.reshape(B, 6, -1)
+            self.scale_shift_table.to(x.dtype)[None] + t.reshape(B, 6, -1)
         ).chunk(6, dim=1)
         if x_mask is not None:
             shift_msa_zero, scale_msa_zero, gate_msa_zero, shift_mlp_zero, scale_mlp_zero, gate_mlp_zero = (
-                self.scale_shift_table[None] + t0.reshape(B, 6, -1)
+                self.scale_shift_table.to(x.dtype)[None] + t0.reshape(B, 6, -1)
             ).chunk(6, dim=1)
 
         # modulate (attention)
@@ -214,7 +214,7 @@ class STDiT3(PreTrainedModel):
         self.pred_sigma = config.pred_sigma
         self.in_channels = config.in_channels
         self.out_channels = config.in_channels * 2 if config.pred_sigma else config.in_channels
-
+        self.autocast_dtype = torch.float32
         # model size related
         self.depth = config.depth
         self.mlp_ratio = config.mlp_ratio
@@ -231,7 +231,7 @@ class STDiT3(PreTrainedModel):
         self.patch_size = config.patch_size
         self.input_sq_size = config.input_sq_size
         self.pos_embed = PositionEmbedding2D(config.hidden_size)
-        self.rope = RotaryEmbedding(dim=self.hidden_size // self.num_heads)
+        self.rope = RotaryEmbedding(dim=self.hidden_size // self.num_heads).to(self.autocast_dtype)
 
         # embedding
         self.x_embedder = PatchEmbed3D(config.patch_size, config.in_channels, config.hidden_size)
@@ -351,8 +351,9 @@ class STDiT3(PreTrainedModel):
             y = y.squeeze(1).view(1, -1, self.hidden_size)
         return y, y_lens
 
+    @torch.cuda.amp.autocast(enabled=True)
     def forward(self, x, timestep, y, mask=None, x_mask=None, fps=None, height=None, width=None, **kwargs):
-        dtype = self.x_embedder.proj.weight.dtype
+        dtype = self.autocast_dtype if self.autocast_dtype else dtype
         B = x.size(0)
         x = x.to(dtype)
         timestep = timestep.to(dtype)

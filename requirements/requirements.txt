@@ -1,4 +1,6 @@
-colossalai==0.3.7
+#colossalai==0.3.7
+bs4
+sentencepiece
 mmengine>=0.10.3
 pandas>=2.0.3
 timm==0.9.16

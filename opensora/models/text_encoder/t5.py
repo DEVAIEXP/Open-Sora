@@ -26,7 +26,7 @@ import re
 
 import ftfy
 import torch
-from transformers import AutoTokenizer, T5EncoderModel
+from transformers import AutoTokenizer, T5EncoderModel, BitsAndBytesConfig
 
 from opensora.registry import MODELS
 
@@ -43,6 +43,7 @@ class T5Embedder:
         hf_token=None,
         use_text_preprocessing=True,
         t5_model_kwargs=None,
+        t5_load_mode="",
         torch_dtype=None,
         use_offload_folder=None,
         model_max_length=120,
@@ -95,6 +96,15 @@ class T5Embedder:
                     "shared": self.device,
                     "encoder": self.device,
                 }
+            if t5_load_mode:
+                t5_model_kwargs['quantization_config'] = BitsAndBytesConfig(
+                        load_in_4bit= True if t5_load_mode == '4bit' else False,
+                        load_in_8bit= True if t5_load_mode == '8bit' else False,
+                        llm_int8_enable_fp32_cpu_offload = True if t5_load_mode == '8bit' and True else False,
+                        bnb_4bit_compute_dtype=torch_dtype,
+                        bnb_4bit_use_double_quant=True,
+                        bnb_4bit_quant_type='nf4'
+                    )       
 
         self.use_text_preprocessing = use_text_preprocessing
         self.hf_token = hf_token
@@ -145,6 +155,7 @@ class T5Encoder:
         cache_dir=None,
         shardformer=False,
         local_files_only=False,
+        t5_load_mode="",
     ):
         assert from_pretrained is not None, "Please specify the path to the T5 model"
 
@@ -155,10 +166,10 @@ class T5Encoder:
             cache_dir=cache_dir,
             model_max_length=model_max_length,
             local_files_only=local_files_only,
+            t5_load_mode=t5_load_mode,
         )
-        self.t5.model.to(dtype=dtype)
+        #self.t5.model.to(dtype=dtype)
         self.y_embedder = None
-
         self.model_max_length = model_max_length
         self.output_dim = self.t5.model.config.d_model
         self.dtype = dtype

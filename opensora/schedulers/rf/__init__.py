@@ -30,7 +30,7 @@ class RFLOW:
             use_timestep_transform=use_timestep_transform,
             **kwargs,
         )
-
+    
     def sample(
         self,
         model,
@@ -51,7 +51,7 @@ class RFLOW:
         # text encoding
         model_args = text_encoder.encode(prompts)
         y_null = text_encoder.null(n)
-        model_args["y"] = torch.cat([model_args["y"], y_null], 0)
+        model_args["y"] = torch.cat([model_args["y"], y_null.to(text_encoder.dtype)], 0)
         if additional_args is not None:
             model_args.update(additional_args)
 
