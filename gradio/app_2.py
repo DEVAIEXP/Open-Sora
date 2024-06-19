@@ -113,7 +113,7 @@ def build_models(model_type, config, enable_optimization=False):
         shift=shift,
         scale=scale,
     )
-    vae = VideoAutoencoderPipeline.from_pretrained(vae_id, **kwargs)
+    vae = VideoAutoencoderPipeline.from_pretrained(vae_id, **kwargs).to("cuda")
 
     #vae = build_module(config.vae, MODELS).cuda()
     text_encoder_id="DeepFloyd/t5-v1_1-xxl"
